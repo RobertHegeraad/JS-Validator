@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+	<title>JavaScript Validation</title>
+	<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<form id="my-form" action="upload.php" method="post" enctype="multipart/form-data">
+
+	<label>First Name</label>
+	<span data-remaining="firstName"></span>
+	<input type="text" name="firstName" data-display="First name"/>
+	<span data-error="firstName"></span>
+	
+	<label>Last Name</label>
+	<input type="text" name="lastName" data-display="Last name"/>
+	<span data-error="lastName"></span>
+
+	<label>Password</label>
+	<input type="password" name="password" data-display="Password"/>
+	<span data-strength="password"></span>
+	<span data-error="password"></span>
+
+	<label>Confirm Password</label>
+	<input type="password" name="confirm_password" data-display="Confirm password" disabled/>
+	<span data-error="confirm_password"></span>
+
+	<label>Message</label>
+	<span data-remaining="message"></span>
+	<textarea name="message" data-display="Message"></textarea>
+	<span data-error="message"></span>
+	<div data-preview="message"></div>
+
+	<label>Profile Image</label>
+	<input type="file" name="profile_image" data-display="Profile image"/>
+	<span data-error="profile_image"></span>
+
+	<input type="submit" value="Send" disabled/>
+
+</form>
+
+<script src="js/validator.js"></script>
+<script>
+
+Validator.set('my-form', {
+	'firstName': 'required|allow:alpha|placeholder:your first name...',
+	'lastName': 'required|allow:alpha',
+	'password': 'required|enable:confirm_password|strength',
+	'confirm_password': 'required|same:password',
+	'message': 'required|remaining:100|crop:100|preview',
+	'profile_image': 'image|size:200000|mime:jpg,png'
+}, {
+	validateOn: 'keyup',
+	disableSubmit: false,
+	customMessages: {
+		firstName: {
+			required: 'Dit veld is verplicht'
+		}
+	},
+	customRules: {
+		myRule: function(field) {
+			field.message = 'MyRule has failed';
+
+			if(field.value == 'Robert')
+				return true;
+
+			return false;
+		}
+	},
+	success: function(data) {
+		console.log('success');
+		console.log(data);
+		return false;
+	},
+	fail: function(errors) {
+		console.log('failed');
+	}
+});
+
+// Rules
+// -------------------------------------------------------------
+// required
+// alpha
+// alpha_num
+// int
+// numeric
+// decimal
+// min:4
+// max:12
+// length
+// minLength:4
+// maxLength:12
+// email
+// url
+// in:1,2,3
+// not_in:1,2,3
+// between:1,10
+// equal:string
+// not_equal:string
+// image
+// size:60000
+// mime:jpg,png
+// different:fieldname
+// same:fieldname
+// enable:fieldname
+
+// Other
+// -------------------------------------------------------------
+// strength
+// remaining:100
+// preview
+// allow:alpha, allow:int
+
+// Filters
+// -------------------------------------------------------------
+// ucfirst
+// uppercase
+// lowercase
+// prefix:string
+// suffix:string
+// money
+// crop:10
+// trim
+// no_spaces
+// html
+
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+label {
+	display: block;
+}
+
+input[type=text], input[type=password], textarea, select {
+	margin: 10px 0;
+}
+input[type=text]:focus, input[type=password]:focus, textarea:focus {
+		    box-shadow: 0px 0px 3px #6EDCF0;
+}
+
+input[type=submit], input[type=button], button {
+	display: block;
+}
+
+.validation-remaining {
+	display: block;
+}
+
+.validation-strength {
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+}
+	.validation-strength-empty {
+		background: gray;
+	}
+	.validation-strength-weak {
+		background: red;
+	}
+	.validation-strength-medium {
+		background: yellow;
+	}
+	.validation-strength-strong {
+		background: green;
+	}
+
+.validation-success {
+	box-shadow: 0px 0px 2px green !important;
+}
+.validation-failed {
+	box-shadow: 0px 0px 2px #FC3232 !important;
+}
