@@ -54,8 +54,7 @@ var Validator = {
 		allow: {},		// Holds the allowed character type for the fields, this will be checked on keydown to prevent non allowed characters from being typed
 		strength: {},	// Holds the names of the fields that have a value strength meter
 		remaining: {},	// Holds the names of the fields that should show how many characters are remaining for the field
-		preview: {},	// Holds the names of the fields that should show a preview of the value
-		placeholder: {}	// Holds the names of the fields that should have a placeholder
+		preview: {}	// Holds the names of the fields that should show a preview of the value
 	},
 
 	
@@ -147,17 +146,13 @@ var Validator = {
 					self._strength(self._fields[name]);
 				}
 
-				// Are there any fields that have a placeholder?
-				if(self._special.placeholder[name]) {
-					self._placeholder(name);
-				}
-
-
 				self._setKeyDownEvent(field, name);
 
 				self._setKeyupEvent(field, name);
 
-				self._setBlurEvent(field, name);
+				if(self._config.validateOn == 'blur' && field.type != 'file') {
+					self._setBlurEvent(field, name);
+				}
 
 
 				// Set change event for non text elements
@@ -193,19 +188,12 @@ var Validator = {
 
 		field.addEventListener('blur', function(e) {
 
-			// Does this field have a placeholder?
-			if(self._special.placeholder[name]) {
-				self._placeholder(name);
-			}
+			// Validate the field
+			self._validate(rules);
 
-			if(self._config.validateOn == 'blur' && field.type != 'file') {
-				// Validate the field
-				self._validate(rules);
-
-				// Enable/Disable the submit button depending is all the fields are successful and if the submit button was disabled by default
-				if(self._config.disableSubmit) {
-					self._toggleSubmit();
-				}
+			// Enable/Disable the submit button depending is all the fields are successful and if the submit button was disabled by default
+			if(self._config.disableSubmit) {
+				self._toggleSubmit();
 			}
 		});
 	},
@@ -313,52 +301,50 @@ var Validator = {
 			field.element = self._fields[name];
 			field.value = field.element.value.trim();
 
-			if(field.value != self._special.placeholder[name]) {
-				if(name in rules) {
+			if(name in rules) {
 
-					// If the page was refreshed, only validate the field that still have a value
-					if(pageRefresh && field.value == '') {
-						break;
+				// If the page was refreshed, only validate the field that still have a value
+				if(pageRefresh && field.value == '') {
+					break;
+				}
+
+				for(var rule in rules[name]) {
+
+					field.rule = rule;
+					field.parameters = rules[name][rule];
+					field.message = '';
+
+					// Check if the field is not required and if it is not filled in,
+					// if so clear the field of any errors and skip it
+					if(self._requiredFields.indexOf(name) == -1 && field.value == '') {
+						self._clearField(self._fields[name]);
+						continue;
 					}
 
-					for(var rule in rules[name]) {
+					var validation;
 
-						field.rule = rule;
-						field.parameters = rules[name][rule];
-						field.message = '';
-
-						// Check if the field is not required and if it is not filled in,
-						// if so clear the field of any errors and skip it
-						if(self._requiredFields.indexOf(name) == -1 && field.value == '') {
-							self._clearField(self._fields[name]);
-							continue;
-						}
-
-						var validation;
-
-						// First check if there is a custom rule set
-						if(typeof self._config.customRules[rule] == 'function') {
-							validation = self._config.customRules[rule](field);
-						} else if(typeof self['_' + rule] == 'function') {	// Else check if the validator rule function exists
-							validation = self['_' + rule](field);
-						}
+					// First check if there is a custom rule set
+					if(typeof self._config.customRules[rule] == 'function') {
+						validation = self._config.customRules[rule](field);
+					} else if(typeof self['_' + rule] == 'function') {	// Else check if the validator rule function exists
+						validation = self['_' + rule](field);
+					}
 
 
-						// If the validation failed
-						if( ! validation) {
-							self._errors[name] = self._parseError(field);
+					// If the validation failed
+					if( ! validation) {
+						self._errors[name] = self._parseError(field);
 
-							// No need to continue
-							break;
-						} else {
-							// Remove the error from the error object
+						// No need to continue
+						break;
+					} else {
+						// Remove the error from the error object
 
-							self._removeErrorMessage(name);
-							self._setSuccessClass(name);
+						self._removeErrorMessage(name);
+						self._setSuccessClass(name);
 
-							if(self._errors[name]) {
-								delete self._errors[name];
-							}
+						if(self._errors[name]) {
+							delete self._errors[name];
 						}
 					}
 				}
@@ -518,13 +504,6 @@ var Validator = {
 								continue;
 							} else if(ruleName == 'remaining') {
 								self._special.remaining[name] = parametersString;
-								continue;
-							} else if(ruleName == 'placeholder') {
-								if( ! 'placeholder' in self._fields[name]) {
-									self._fields[name].setAttribute('placeholder', parametersString)
-								} else {
-									self._special.placeholder[name] = parametersString;
-								}
 								continue;
 							}
 
@@ -1123,6 +1102,7 @@ var Validator = {
 	 * Usage: size:60000
 	 */
 	_size: function(field) {
+		console.log(field);
 		var self = this;
 
 		if(field.element.files) {
@@ -1200,10 +1180,7 @@ var Validator = {
 	},
 
 	/**
-	 * Enable fields:
-	 *
-	 * Adds the field that needs to be enabled to the _special.enable object, these fields will be enabled when
-	 * the corresponding field (which is the key in the object) gets the .validation-success class
+	 * Enables another field if the given field has passed all other validation rules
 	 *
 	 * Usage: enable:fieldname
 	 */
@@ -1289,19 +1266,6 @@ var Validator = {
 		var self = this;
 
 		self._insertPreview(name);
-	},
-
-	_placeholder: function(name) {
-		var self = this,
-			field = self._fields[name];
-
-		var placeholder = self._special.placeholder[name];
-
-		if(field.value == '') {
-			field.value = placeholder;
-		} else {
-			field.value == '';
-		}
 	},
 
 
@@ -1428,6 +1392,33 @@ var Validator = {
 		}
 
 		return true;
+	},
+
+	/**
+	 * If the value for the field is numeric, round the value up or down depending on the parameter
+	 *
+	 * round without a parameter will round to the nearest integer
+	 * round:up will round up, 3.4 will becom 4
+	 * round:down will round down, 3.6 will become 3
+	 *
+	 * Usage: round:up, round:down
+	 */
+	_round: function(field) {
+		var self = this;
+
+		if(self._numeric(field)) {
+			if(field.parameters == 'up') {
+				field.element.value = Math.ceil(field.value);
+			} else if(field.parameters == 'down') {
+				field.element.value = Math.floor(field.value);
+			} else {
+				field.element.value = Math.round(field.value);
+			}
+
+			return true;
+		}
+
+		return false;
 	},
 
 	/**

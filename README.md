@@ -28,32 +28,38 @@ Validator.set('my-form', {
 
 #### Validation Rules
 
-```js
-required - Checks if the value for the field in not empty, will be checked first
-alpha - Checks if the value consists of only letters
-alpha_num - Checks if the value consists of only letters and/or numbers
-int - Checks if the value is a whole number
-numeric - Checks if the value consists of only numbers
-decimal - Checks if the value is a decimal value
-min:4 - Checks if the value is not lower than the given value
-max:12 - Checks if the value is not higher than the given value
-length - Checks if the value is of a certain length
-minLength:4 - Checks if the value is atleast a minimum amount of characters
-maxLength:12 - Checks if the value does not exceed a maximum amount of characters
-email - Checks if the value is a valid email address
-url - Checks if the value is a URL
-in:1,2,3 - Checks if the value is in the list of passed values
-not_in:1,2,3 - Checks if the value is not in the list of passed values
-between:1,10 - Checks if the value is between the two passed in numbers not including both
-equal:string - Checks if the value is equal to the value that is passed in
-not_equal:string - Checks if the value is not equal to the value that is passed in
-image - Checks if the file that should be uploaded is an image by checking the MIME type of the file
-size:60000 - Checks the filesize does not exceed the value that was passed
-mime:jpg,png - Checks if the MIME type is allowed, all allowed MIME types are in the mimeTypes object
-different:fieldname - Checks if the value is different than the value of another field
-same:fieldname - Checks if the value is the same as the value of another field
-enable:fieldname - Enables another field if the given field has passed all other validation rules, if it fails the field will be disabled again
-```
+| Rule        		  | Description																														|
+| --------------------|:-------------------------------------------------------------------------------------------------------------------------------:|
+| required			  |	Checks if the value for the field in not empty, will be checked first 															|
+| alpha				  |	Checks if the value consists of only letters 																					|
+| alpha_num 		  |	Checks if the value consists of only letters and/or numbers 																	|
+| int 				  |	Checks if the value is a whole number 																							|
+| numeric			  |	Checks if the value consists of only numbers 																					|
+| decimal			  |	Checks if the value is a decimal value 																							|
+| min:4 			  |	Checks if the value is not lower than the given value 																			|
+| max:12 			  |	Checks if the value is not higher than the given value 																			|
+| length 			  |	Checks if the value is of a certain length 																						|
+| minLength:4 		  |	Checks if the value is atleast a minimum amount of characters 																	|
+| maxLength:12 		  |	Checks if the value does not exceed a maximum amount of characters 																|
+| email 			  |	Checks if the value is a valid email address 																					|
+| url 				  |	Checks if the value is a URL 																									|
+| in:1,2,3 			  |	Checks if the value is in the list of passed values 																			|
+| not_in:1,2,3 		  |	Checks if the value is not in the list of passed values 																		|
+| between:1,10 		  |	Checks if the value is between the two passed in numbers not including both 													|
+| equal:string 		  |	Checks if the value is equal to the value that is passed in 																 	|
+| not_equal:string	  | Checks if the value is not equal to the value that is passed in 															 	|
+| image 			  |	Checks if the file that should be uploaded is an image by checking the MIME type of the file 									|
+| size:60000 		  |	Checks the filesize does not exceed the value that was passed 																	|
+| mime:jpg,png 		  |	Checks if the MIME type is allowed, all allowed MIME types are in the mimeTypes object 											|
+| different:fieldname | Checks if the value is different than the value of another field 																|
+| same:fieldname 	  |	Checks if the value is the same as the value of another field 																	|
+| enable:fieldname 	  |	Enables another field if the given field has passed all other validation rules, if it fails the field will be disabled again	|
+
+| Rule        | Description	|
+| ------------- |:-------------:|
+| col 3 is      | right-aligned |
+| col 2 is      | centered      |
+| zebra stripes | are neat      |
 
 #### Filter
 
@@ -72,7 +78,8 @@ crop:10 - Crop characters of the end of value that exceed the max length
 trim - Remove spaces from the front and the back of the value
 no_spaces - Remove all spaces from the input value
 html:boolean - If set to true it converts from HTML enitities in the value, if false it converts to HTML entities
-allow:alpha, allow:int - With the allow rule you can allow only either letters or numbers to be typed in the field.
+round, round:up, round:down - Round the given value either up, down or to the nearest integer if no parameter was passed
+allow:alpha, allow:int - With the allow rule you can allow only either letters or numbers to be typed in the field
 ```
 
 #### HTML rules
