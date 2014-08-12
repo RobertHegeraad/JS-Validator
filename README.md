@@ -28,6 +28,7 @@ Validator.set('my-form', {
 
 #### Validation Rules
 
+```js
 required - Checks if the value for the field in not empty, will be checked first
 alpha - Checks if the value consists of only letters
 alpha_num - Checks if the value consists of only letters and/or numbers
@@ -52,6 +53,7 @@ mime:jpg,png - Checks if the MIME type is allowed, all allowed MIME types are in
 different:fieldname - Checks if the value is different than the value of another field
 same:fieldname - Checks if the value is the same as the value of another field
 enable:fieldname - Enables another field if the given field has passed all other validation rules, if it fails the field will be disabled again
+```
 
 #### Filter
 
@@ -112,11 +114,23 @@ You can also just disable the submit button in the form directly.
 
 Called if the validation was successful and is passed an object with key value pairs for the fields.
 
-If this function return true the form will be submitted to the form action property like usual.
+If this function return true the form will be submitted to the form action property like usual. If false is returned the form will not submit.
+
+```js
+success: function(data) {
+	// Do something with the values
+}
+```
 
 #### Fail callback
 
 Called if the validation failed and is passed an object with the errors for the fields.
+
+```js
+fail: function(errors) {
+	// Do something with the errors
+}
+```
 
 #### Setting custom messages
 
