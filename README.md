@@ -29,7 +29,7 @@ Validator.set('my-form', {
 #### Validation Rules
 
 | Rule        		  | Description																														|
-| --------------------|:-------------------------------------------------------------------------------------------------------------------------------:|
+| --------------------|---------------------------------------------------------------------------------------------------------------------------------|
 | required			  |	Checks if the value for the field in not empty, will be checked first 															|
 | alpha				  |	Checks if the value consists of only letters 																					|
 | alpha_num 		  |	Checks if the value consists of only letters and/or numbers 																	|
@@ -55,42 +55,37 @@ Validator.set('my-form', {
 | same:fieldname 	  |	Checks if the value is the same as the value of another field 																	|
 | enable:fieldname 	  |	Enables another field if the given field has passed all other validation rules, if it fails the field will be disabled again	|
 
-| Rule        | Description	|
-| ------------- |:-------------:|
-| col 3 is      | right-aligned |
-| col 2 is      | centered      |
-| zebra stripes | are neat      |
-
 #### Filter
 
 Filters will change the value of the field, and are applied the same way as validation rules. For example you can use the ucfirst filter to capitalize the first letter of the value, useful for names.
 
 Here are all the filters
 
-```js
-ucfirst - Convert the first character of the value to uppercase and the rest to lowercase
-uppercase - Converts the value to uppercase
-lowercase - Converts the value to lowercase
-prefix:string - Puts a prefix before the value
-suffix:string - Puts a suffix after the value
-money - Converts a number into a money figure, 100 will become 100.00, 2.5 will become 2.50
-crop:10 - Crop characters of the end of value that exceed the max length
-trim - Remove spaces from the front and the back of the value
-no_spaces - Remove all spaces from the input value
-html:boolean - If set to true it converts from HTML enitities in the value, if false it converts to HTML entities
-round, round:up, round:down - Round the given value either up, down or to the nearest integer if no parameter was passed
-allow:alpha, allow:int - With the allow rule you can allow only either letters or numbers to be typed in the field
-```
+| Rule        		  			| Description																														
+| ------------------------------|-----------------------------------------------------------------------------------------------------
+| ucfirst						| Convert the first character of the value to uppercase and the rest to lowercase
+| uppercase 					| Converts the value to uppercase
+| lowercase 					| Converts the value to lowercase
+| prefix:string 				| Puts a prefix before the value
+| suffix:string 				| Puts a suffix after the value
+| money 						| Converts a number into a money figure, 100 will become 100.00, 2.5 will become 2.50
+| crop:10 						| Crop characters of the end of value that exceed the max length
+| trim 							| Remove spaces from the front and the back of the value
+| no_spaces 					| Remove all spaces from the input value
+| html:boolean 					| If set to true it converts from HTML enitities in the value, if false it converts to HTML entities
+| round, round:up, round:down 	| Round the given value either up, down or to the nearest integer if no parameter was passed
+| allow:alpha, allow:int 		| With the allow rule you can allow only either letters or numbers to be typed in the field
 
 #### HTML rules
 
 The following rules work together with HTML elements on the page, more information on these can be read at the bottom of the page.
 
-```js
-strength - Shows a strength meter for the value in an HTML element, useful for passwords
-remaining:100 - Shows how many characters are still remaining for the user to be typed, blocks characters that exceed the limit
-preview - Shows a preview of the field value in an HTML element, useful for comments
-```
+| Rules 		| Description																														
+| --------------|----------------------------------------------------------------------------------------------------------------
+| strength 		| Shows a strength meter for the value in an HTML element, useful for passwords
+| remaining:100	| Shows how many characters are still remaining for the user to be typed, blocks characters that exceed the limit
+| preview 		| Shows a preview of the field value in an HTML element, useful for comments
+
 
 ## Config
 
