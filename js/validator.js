@@ -539,7 +539,8 @@ var Validator = {
 	 */
 	_parseError: function(field) {
 		var self = this,
-			error = '';
+			error = '',
+			name;
 
 		if(field.message == '') {
 			// Set the error message, if it doesn't exist use the default error message
@@ -560,32 +561,10 @@ var Validator = {
 		}
 
 		// Does this field have a data-display property that holds a pretty field name?
-		name = (field.element.dataset.display) && field.element.dataset.display;
+		name = (field.element.dataset.display) ? field.element.dataset.display : field.element.name;
 
-		return error.replace(':field', field.element.name).replace(':ruleValue', field.parameters);
+		return error.replace(':field', name).replace(':ruleValue', field.parameters);
 	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * 
-	 */
-	_checkSpecials: function(name) {
-		var self = this;
-
-		// Is there a field that is supposed to have the same value as this field?
-		if(self._special.same[name]) {
-			var	fieldName = self._special.same[name];
-
-			self._clearField(self._fields[fieldName]);
-		}
-
-		// Is there a field that is supposed to have a different value as this field?
-		if(self._special.different[name]) {
-			var	fieldName = self._special.different[name];
-
-			self._clearField(self._fields[fieldName]);
-		}
-	},
-
 
 	/* START HTML FUNCTIONS ---------------------------------------------- */
 

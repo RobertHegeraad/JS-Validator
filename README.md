@@ -1,6 +1,10 @@
 HTML5 Multiple File Drag and Drop Upload
 =====
 
+#### Demo
+
+http://jsfiddle.net/RobertHegeraad/geu4j2bh/
+
 #### Simple Usage
 
 To set up validation call the Validator.set() function and pass the ID of the form in the first parameter, the second parameter should contain all the validation rules for each field. The third parameter is the configuration, more on that in the Config section
