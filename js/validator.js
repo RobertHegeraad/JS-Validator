@@ -1,5 +1,11 @@
 var Validator = {
 
+	// demo page met elke filter en validation
+	// checkboxes
+	// radio buttons
+	// events anders
+
+
 	_config: {
 		validateOn: 'submit',	// Validate the form on either 'submit', 'keyup' or 'blur'
 		disableSubmit: false,	// If set to true, the submit button will be disabled and only enabled when all the required fields are succesful
@@ -17,22 +23,25 @@ var Validator = {
 		alpha_num: 'The :field field can only contain letters and numbers',
 		min: 'This value is too low',
 		max: 'This value is too high',
-		length: 'This value must be :ruleValue characters long',
-		minLength: 'This value must be atleast :ruleValue characters long',
-		maxLength: 'This value cannot be longer than :ruleValue characters',
+		length: 'This value must be :parameter characters long',
+		minLength: 'This value must be atleast :parameter characters long',
+		maxLength: 'This value cannot be longer than :parameter characters',
 		email: 'This is not a valid email address',
 		url: 'This is not a valid URL',
 		in: 'This value is not allowed',
 		not_in: 'This value is not allowed',
 		between: 'This value does not meet the requirements',
-		exact: 'The value must be exactly :ruleValue',
-		equal: 'The value must equal :ruleValue',
-		not_equal: 'The value may not be equal to :ruleValue',
+		exact: 'The value must be exactly :parameter',
+		equal: 'The value must equal :parameter',
+		day: 'This is not a valid day',
+		month: 'This is not a valid month',
+		year: 'This is not a valid year',
+		date: 'The is not a valid date',
 		image: 'This is not an image',
 		size: 'This file is too big',
 		mime: 'The file type is not allowed',
-		different: 'This value cannot match the value from the :ruleValue field',
-		same: 'This does not match the :ruleValue field',
+		different: 'This value cannot match the value from the :parameter field',
+		same: 'This does not match the :parameter field',
 		default: 'Something went wrong with this field'
 	},
 
@@ -54,7 +63,7 @@ var Validator = {
 		allow: {},		// Holds the allowed character type for the fields, this will be checked on keydown to prevent non allowed characters from being typed
 		strength: {},	// Holds the names of the fields that have a value strength meter
 		remaining: {},	// Holds the names of the fields that should show how many characters are remaining for the field
-		preview: {}	// Holds the names of the fields that should show a preview of the value
+		preview: {}		// Holds the names of the fields that should show a preview of the value
 	},
 
 	
@@ -81,6 +90,8 @@ var Validator = {
 	 */
 	set: function(id, rules, options) {
 		var self = this;
+		
+		self._form = document.getElementById(id);
 
 		rules = rules || {};
 		options = options || {};
@@ -88,32 +99,70 @@ var Validator = {
 		// Combine the config with the user provided options
 		self._extend(self._config, options);
 
+		// Combine the rules with the inlineRules
+		self._extend(rules, self._getInlineRules());
 
+		// Parse the rules
+		self._rules = self._parseRules(rules);
 
-		self._form  = document.getElementById(id);
 
 		// Does the form exist?
 		if(self._form) {
 
-			// Put the fields in a key value object so they are easily accessable
+			// Put the fields in a key value object so they are easily accessible
 			var fields = self._form.elements;
 			for(var i=0; i<fields.length; i++) {
-				var name = fields[i].name,
-					type = fields[i].type;
-				
-				// Turn off autocomplete for all fields
-				fields[i].setAttribute('autocomplete', 'off');
+				var field = fields[i];
 
-				if(name != '' && type != 'submit')
-					self._fields[name] = fields[i];
+				if(field.name in self._rules && field.type != 'submit' && field.type != 'file') {
+
+					// Create the field object containing the rules, the error message and the reference to the element itself
+					self._fields[field.name] = {
+						rules: self._rules[field.name],
+						error: false,
+						element: field
+					}
+
+
+					// When to validate
+					var on = self._config.validateOn;
+					if(field.type == 'checkbox' || field.type == 'radio' || field.type == 'file') {
+						field.addEventListener('change', function(e) {
+							var o = {};
+							o[this.name] = self._fields[this.name];
+							self._validate(o);
+						});
+					} else {
+						field.addEventListener('blur', function(e) {
+							var o = {};
+							o[this.name] = self._fields[this.name];
+							self._validate(o);
+						});
+					}
+
+					if(self._config.keyup) {
+						var timer;
+						field.addEventListener('keyup', function(e) {
+							var name = this.name;
+							clearTimeout(timer);
+							timer = setTimeout(function() {
+								var o = {};
+								o[name] = self._fields[name];
+								self._validate(o);
+							}, 1000);
+						});
+					}
+				}
 			}
 
-			// Combine the rules with the inlineRules
-			self._extend(rules, self._getInlineRules());
+			console.log('All fields in the form');
+			console.log(self._fields);
 
-			// Parse the rules todo: in function plaatsen
-			self._rules = self._parseRules(rules);
 
+			
+
+
+			/* ----------------------------------------------------------------------- */
 
 
 			self._submit = self._form.querySelector("[type=submit]");
@@ -125,278 +174,135 @@ var Validator = {
 				self._submit.setAttribute('disabled', 'disabled');
 			}
 
-			// Validate the form when the page loads
-			self._validate(self._rules, true);
 
-
-			/* START EVENT LISTENERS --------------------------------------------- */
-
-			var on = self._config.validateOn;
-
-			for(var name in self._fields) {
-				var field = self._fields[name];
-
-				// Are there any fields that have a remaining character count? if so show the default count
-				if(self._special.remaining[name]) {
-					self._remaining(name, self._special.remaining[name]);
-				}
-
-				// Are there any fields that have a remaining character count? if so show the default count
-				if(self._special.strength[name]) {
-					self._strength(self._fields[name]);
-				}
-
-				self._setKeyDownEvent(field, name);
-
-				self._setKeyupEvent(field, name);
-
-				if(self._config.validateOn == 'blur' && field.type != 'file') {
-					self._setBlurEvent(field, name);
-				}
-
-
-				// Set change event for non text elements
-				if(field.type == 'file' || field.type == 'checkbox' || field.type == 'select-one') {
-					self._setChangeEvent(field, name);
-				}
-			}
-
+			// Add the form submit event listener
 			self._form.addEventListener('submit', function(e) {
 				e.preventDefault();
 
 				// Validate every rule for each field
-				self._validate(self._rules);
-
-				if(self._isSuccessful()) {
-					self._success();
-				} else {
-					self._fail();
-				}
+				self._validate(self._fields, true);
 			});
-
-
-
-			/* END EVENT LISTENERS ----------------------------------------------- */
 		}
 	},
 
-	_setBlurEvent: function(field, name) {
-		var self = this,
-			rules = {};
-
-		rules[name] = self._rules[name];
-
-		field.addEventListener('blur', function(e) {
-
-			// Validate the field
-			self._validate(rules);
-
-			// Enable/Disable the submit button depending is all the fields are successful and if the submit button was disabled by default
-			if(self._config.disableSubmit) {
-				self._toggleSubmit();
-			}
-		});
-	},
-
-	_setKeyDownEvent: function(field, name) {
-		var self = this;
-
-		field.addEventListener('keydown', function(e) {
-
-			// Does this field have the allow rule set?
-			if(self._special.allow[name] == 'int') {
-				self._allow(e, name, 'int');
-			} else if(self._special.allow[name] == 'alpha') {
-				self._allow(e, name, 'alpha');
-			}
-
-			// Only check for remaining character count if the pressed key wat not prevented by the _allow rule function
-			if( ! e.defaultPrevented) {
-				// Are there any fields that have a remaining character count?
-				if(self._special.remaining[name]) {
-					self._remaining(name, self._special.remaining[name], e);
-				}
-			}
-		});
-	},
-
-	_setKeyupEvent: function(field, name) {
-		var self = this,
-			timer,
-			rules = {};
-
-		rules[name] = self._rules[name];
-
-		field.addEventListener('keyup', function(e) {
-
-			// Are there any fields that have a remaining character count?
-			if(self._special.remaining[name]) {
-				self._remaining(name, self._special.remaining[name], e);
-			}
-
-			if(self._special.preview[name]) {
-				self._preview(name);
-			}
-
-			// Don't validate when the Tab key was pressed
-			if(e.keyCode != 9) {			
-				clearTimeout(timer);
-				
-				// Is there a field that is supposed to have the same value as this field?
-				if(self._special.same[name]) {
-					var	fieldName = self._special.same[name];
-
-					self._clearField(self._fields[fieldName]);
-				}
-
-				// Is there a field that is supposed to have a different value as this field?
-				if(self._special.different[name]) {
-					var	fieldName = self._special.different[name];
-
-					self._clearField(self._fields[fieldName]);
-				}
-
-				// Does this field have a strength meter?
-				if(self._special.strength[name]) {
-					self._strength(self._fields[name]);
-				}				
-
-				timer = setTimeout(function() {
-
-					if(self._config.validateOn == 'keyup') {
-						self._validate(rules);
-					};
-
-					// Enable/Disable the submit button depending is all the fields are successful and if the submit button was disabled by default
-					if(self._config.disableSubmit) {
-						self._toggleSubmit();
-					}
-				}, 1000);
-			}
-		});
-	},
-
-	_setChangeEvent: function(field, name) {
-		var self = this,
-			rules = {};
-
-		rules[name] = self._rules[name];
-
-		field.addEventListener('change', function(e) {
-			self._validate(rules);
-		});
-	},
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Validate all the passed rules for each field, when the config.validateOn is set to 'keyup' or
 	 * 'blur' only the rules for the field that had the event are passed
 	 */
-	_validate: function(rules, pageRefresh) {
+	_validate: function(fields, submit) {
 		var self = this,
-			field = {};
+			validation = true;
 
-		// Loop through all the fields and get the rules for that field
-		for(var name in self._fields) {
+		submit = submit || false;
 
-			field.element = self._fields[name];
-			field.value = field.element.value.trim();
+		console.log('Fields to be validated');
+		console.log(fields);
 
-			if(name in rules) {
+		for(var name in fields) {
+			var field = fields[name];
 
-				// If the page was refreshed, only validate the field that still have a value
-				if(pageRefresh && field.value == '') {
-					break;
-				}
+			validation = true;
 
-				for(var rule in rules[name]) {
+			if(field.rules) {
+				console.log('validating ' + name);
 
-					field.rule = rule;
-					field.parameters = rules[name][rule];
-					field.message = '';
+				field.element.value = field.element.value.trim();
 
-					// Check if the field is not required and if it is not filled in,
-					// if so clear the field of any errors and skip it
-					if(self._requiredFields.indexOf(name) == -1 && field.value == '') {
-						self._clearField(self._fields[name]);
-						continue;
+				for(var rule in field.rules) {
+					var parameters = field.rules[rule];
+
+
+					console.log(rule);
+
+					if(typeof self['_' + rule] == 'function') {	// Check if the validator rule function exists
+						validation = self['_' + rule](field, rule, parameters);
 					}
 
-					var validation;
-
-					// First check if there is a custom rule set
-					if(typeof self._config.customRules[rule] == 'function') {
-						validation = self._config.customRules[rule](field);
-					} else if(typeof self['_' + rule] == 'function') {	// Else check if the validator rule function exists
-						validation = self['_' + rule](field);
-					}
-
-
-					// If the validation failed
+					// Stop validating the current field if one rule failed
 					if( ! validation) {
-						self._errors[name] = self._parseError(field);
+						console.log(name + ' validation failed at rule: ' + rule);
 
-						// No need to continue
+						field.error = self._parseError(field, rule, parameters);
+
+						self._placeError(field);
+						self._setFailClass(field);
+						self._disableSubmit();
+
+						field.validated = false;
+
+						// Calls the error callback if it is set
+						self._error(field);
+
 						break;
-					} else {
-						// Remove the error from the error object
-
-						self._removeErrorMessage(name);
-						self._setSuccessClass(name);
-
-						if(self._errors[name]) {
-							delete self._errors[name];
-						}
 					}
 				}
-			}
-		}
 
-		// Place all the errors on the page
-		self._handleErrors(self._errors);
-	},
+				// If the field was successfuly validated
+				if(validation) {
+					console.log(name + ' validation success');
+					
+					self._removeError(field);
+					self._setSuccessClass(field);
 
-	/** -----------------------------------------------------------------------------------------------------
-	 * Loops through the _errors object and inserts all the errors and sets the .validation-failed class for all the failed fields
-	 *
-	 * @param errors Object containig the field names and the error messages for those fields
-	 */
-	_handleErrors: function(errors) {
-		var self = this;
-
-		// Check every field
-		for(var name in self._fields) {
-			var field = self._fields[name];
-
-			// Does this field have an error?
-			if(name in errors) {
-				self._insertErrorMessage(name);
-				self._setFailClass(name);
-			}
-		}
-	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Check if all the required fields have the .validation-success class and if there are no errors in the self._errors object
-	 */
-	_isSuccessful: function() {
-		var self = this,
-			successful = self._form.querySelectorAll('.validation-success'),
-			requiredCount = self._requiredFields.length,
-			field;
-
-		if(self._objLength(self._errors) === 0) {
-			for(var i=0; i<self._requiredFields.length; i++) {
-				field = self._fields[self._requiredFields[i]];
-
-				// Does the required field have the .validation-success class? if not, the form is not successful
-				if( ! /\bvalidation-success\b/.test(field.className)) {
-					return false;
+					field.validated = true;
 				}
 			}
+		}
 
-			return true;
+		if(self._formValidated()) {
+			self._enableSubmit();
+		}
+
+		// If either the submit button was pressed or all the fields are successfully validated, continue with the success or fail functions
+		if(submit && self._formValidated()) {
+			// console.log(self._formValidated());
+			if( ! validation) {
+				self._fail();	// Calls the fail callback if it is set
+			} else {
+				self._success();	// Calls the success callback if it is set
+			}
 		}
 	},
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Check each field if it is validated
+	 */
+	_formValidated: function() {
+		var validated = true;
+		
+		for(name in this._fields) {
+			if( ! this._fields[name].validated) {
+				validated = false;
+				break;
+			}
+		}
+
+		return validated;
+	},
+
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Looks for an element with the data attribute error set to the name of the field
+	 * If found it places the error in the element
+	 */
+	_placeError: function(field) {
+		// Does the field already have an error element?
+		if((element = document.querySelector("[data-error=" + field.element.name + "]")) != null) {
+			element.innerHTML = field.error;
+		}
+	},
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Looks for an element with the data attribute error set to the name of the field
+	 * If found it clears the value of the element, removing the error from the screen
+	 */
+	_removeError: function(field) {
+		if((element = document.querySelector("[data-error=" + field.element.name + "]")) != null) {
+			element.innerHTML = '';
+		}
+	},
+
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Gets the inline rules for every field if the data-validation attribute is set
@@ -410,7 +316,7 @@ var Validator = {
 		for(name in self._fields) {
 			field = self._fields[name];
 
-			if(field.hasAttribute('data-validation')) {
+			if(field.element.hasAttribute('data-validation')) {
 				rules[name] = self._fields[name].getAttribute('data-validation');
 			}
 		}
@@ -432,7 +338,7 @@ var Validator = {
 	 * will return
 	 *
 	 * profile_image: {
-	 * 		required: 'required',
+	 * 		required: true,
 	 * 		size: 500000,
 	 *		mime: ['jpg', 'png']
 	 * }
@@ -440,93 +346,47 @@ var Validator = {
 	 * @param rules Object containg field names and the rule strings
 	 */
 	_parseRules: function(rules) {
+
 		var self = this,
-			string,
 			rule,
-			ruleName,
-			rulesObject = {},
-			parametersString,
-			parametersArray,
-			split;
+			parameters,
+			rulesObject = {};
 
-		for(var name in rules) {
-			if(typeof rules[name] === 'string' && name in self._fields) {
-				rulesObject[name] = {},
+		for(var field in rules) {
 
-				string = rules[name];
+			rulesObject[field] = {};
 
-				// Move the required rule infront of the string and remove any trailing | symbols
-				if(string.match(/required/)) {
-					string = ('required|' + string.replace(/required(\|)?/, '')).replace(/\|+$/, "");
-					self._requiredFields.push(name);
-				}
-
-				// Place the enable rule to the back of the string
-				if(string.match(/enable:[a-zA-Z_]+/)) {
-					var enableString = string.match(/enable:[a-zA-Z_]+/);
-					string = (string.replace(/enable:[a-zA-Z_]+(\|)?/, '')).replace(/\|+$/, "") + '|' + enableString[0];
-				}
-
-				rulesArray = string.split('|');
-
-				// Does the field exist in the form?
-				for(var i=0; i<rulesArray.length; i++) {
-					rule = rulesArray[i];
-
-					// Does the rule have parameters
-					if(/\:/.test(rule)) {
-						split = rule.split(':');
-						ruleName = split.shift();
-						parametersString = split.shift();
-
-						// Does the rule have multiple parameters, e.g. in:1,2,3
-						if(/,/.test(parametersString)) {
-
-							parametersArray = parametersString.split(',');
-
-							rulesObject[name][ruleName] = parametersArray;
-
-						// The rule had only one parameter, e.g. min:5
-						} else {  
-							
-							// The rules same and different require special treatment
-							// for example the confirm_password field has the rule same:password this way the value should be the
-							// same as the password field. These field names will be added to the
-							// self._special.same object like so: password: confirm_password
-							// now when the password field is changed we can check this object to see if any field
-							// depends on the password field. The depending field will then be cleared.
-							if(ruleName == 'same') {
-								self._special.same[parametersString] = name;
-							} else if(ruleName == 'different') {
-								self._special.different[parametersString] = name;
-							} else if(ruleName == 'allow') {
-								self._special.allow[name] = parametersString;
-								continue;
-							} else if(ruleName == 'remaining') {
-								self._special.remaining[name] = parametersString;
-								continue;
-							}
-
-							rulesObject[name][ruleName] = parametersString;
-						}
-					} else {
-						if(rule == 'preview') {
-							self._special.preview[name] = name;
-							continue;
-						} else if(rule == 'strength') {
-							self._special.strength[name] = name;
-							continue;
-						}
-
-						// The rule had no parameters, e.g. alpha_num
-						rulesObject[name][rule] = rule;
-					}
-				}
+			// Move the required rule infront of the string and remove any trailing | symbols
+			if(rules[field].match(/required/)) {
+				rules[field] = ('required|' + rules[field].replace(/required(\|)?/, '')).replace(/\|+$/, "");
 			}
+
+			// Place the enable rule to the back of the string
+			if(rules[field].match(/enable:[a-zA-Z_]+/)) {
+				var enableString = rules[field].match(/enable:[a-zA-Z_]+/);
+				rules[field] = (rules[field].replace(/enable:[a-zA-Z_]+(\|)?/, '')).replace(/\|+$/, "") + '|' + enableString[0];
+			}
+
+			rulesArray = rules[field].split('|');
+
+			for(var i=0; i<rulesArray.length; i++) {
+
+				var o = {};
+				rule = rulesArray[i].split(':');
+				parameters = (rule[1]) ? rule[1].split(',') : true;
+				
+				rulesObject[field][rule[0]] = parameters;
+			}
+		}
+
+		// Add the custom rules to the validator object
+		for(rule in self._config.customRules) {
+			self['_' + rule] = self._config.customRules[rule];
 		}
 
 		return rulesObject;
 	},
+
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Get the error message that belongs to the rule that failed the validation,
@@ -537,170 +397,44 @@ var Validator = {
 	 *
 	 * Finally replace the placeholders :field and :ruleValue with the correct values
 	 */
-	_parseError: function(field) {
+	_parseError: function(field, rule, parameter) {
 		var self = this,
 			error = '',
 			name;
 
-		if(field.message == '') {
-			// Set the error message, if it doesn't exist use the default error message
-			if(self._messages[field.rule]) {
-				error = self._messages[field.rule];
-			} else {
-				error = self._messages.default;
-			}
+		error = (self._messages[rule]) ? self._messages[rule] : self._messages.default;
 
-			// If a custom message exist for this field and rule, overwrite the error message
-			if(self._config.customMessages[field.element.name]) {
-				if(self._config.customMessages[field.element.name][field.rule]) {
-					error = self._config.customMessages[field.element.name][field.rule];
-				}
+		// // If a custom message exist for this field and rule, overwrite the error message
+		if(self._config.customMessages[field.element.name]) {
+			if(self._config.customMessages[field.element.name][rule]) {
+				error = self._config.customMessages[field.element.name][rule];
 			}
-		} else {
-			error = field.message;
 		}
+
 
 		// Does this field have a data-display property that holds a pretty field name?
 		name = (field.element.dataset.display) ? field.element.dataset.display : field.element.name;
 
-		return error.replace(':field', name).replace(':ruleValue', field.parameters);
+		return error.replace(':field', name).replace(':ruleValue', rule).replace(':parameter', parameter[0]);
 	},
 
-	/* START HTML FUNCTIONS ---------------------------------------------- */
-
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Looks for an element with the data attribute error set to the name of the field
-	 * If found it places the error in the element and adds the .validation-error class
-	 */
-	_insertErrorMessage: function(name) {
-		var self = this;
-
-		// Does the field already have an error element?
-		var element = document.querySelector("[data-error=" + name + "]");
-
-		if(element != null) {
-			// Does the element already have the .valition-error class, if not add it
-			if( ! /\bvalidation-error\b/.test(element.className)) {
-				element.className = element.className + ' validation-error';
-			}
-
-			element.innerHTML = self._errors[name];
-		}
-	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Looks for an element with the data attribute error set to the name of the field
-	 * If found it clears the value of the element, removing the error from the screen
-	 */
-	_removeErrorMessage: function(name) {
-		var self = this,
-			element = document.querySelector("[data-error=" + name + "]");
-
-		if(element != null) {
-			element.innerHTML = '';
-		}
-	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Looks for an element on the page with the data attribute strengh that is equal to the name of the field.
-	 * If found it decides what classname to use for the element depending on the score given by the _strength function.
-	 * The strength is then added to the element in a class like so: .validation-strength-strong
-	 *
-	 * @param name The name of the field
-	 * @param score The score received from the _strength function that reflects the strength of the value from the field
-	 */
-	_insertStrengthMeter: function(name, strength) {
-		var self = this,
-			element = document.querySelector("[data-strength=" + name + "]");
-
-		if(element != null) {
-			// Does the element already have the .valition-error class, if not add it
-			if( ! /\bvalidation-strength\b/.test(element.className)) {
-				element.className = element.className + ' validation-strength';
-			}
-
-			// Remove the old strength classes
-			element.className = element.className.replace(' validation-strength-empty','').replace(' validation-strength-weak','').replace(' validation-strength-medium','').replace(' validation-strength-strong','');
-
-			element.className = element.className + ' validation-strength-' + strength;
-		}
-	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Looks for an element on the page with the data attribute remaining that is equal to the name of the field.
-	 * If found it will show how many characters the user can type in the field
-	 *
-	 * @param name The name of the field
-	 * @param remaining The amount of characters that are allowed
-	 */
-	_insertRemainingCharacters: function(name, remaining) {
-		var self = this,
-			element = document.querySelector("[data-remaining=" + name + "]");
-
-		if(element != null) {
-			// Does the element already have the .valition-error class, if not add it
-			if( ! /\bvalidation-remaining\b/.test(element.className)) {
-				element.className = element.className + ' validation-remaining';
-			}
-
-			var text = (remaining == 1) ? ' character remaining' : ' characters remaining';
-
-			element.innerHTML = remaining + text;
-		}
-	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Looks for an element on the page with the data attribute preview that is equal to the name of the field.
-	 * If found it will show the value of the field in the HTML element
-	 *
-	 * @param name The name of the field
-	 */
-	_insertPreview: function(name) {
-		var self = this,
-			element = document.querySelector("[data-preview=" + name + "]");
-
-		if(element != null) {
-			// Does the element already have the .valition-error class, if not add it
-			if( ! /\bvalidation-preview\b/.test(element.className)) {
-				element.className = element.className + ' validation-preview';
-			}
-
-			element.innerHTML = self._fields[name].value;
-		}
-	},
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Add the .validation-success class to the field and remove the .validation-failed class if it exists
-	 *
-	 * @param name The name of the field
 	 */
-	_setSuccessClass: function(name) {
-		var self = this,
-			field = self._fields[name];
-
+	_setSuccessClass: function(field) {
 		// Check if field already has the class
-		if( ! /\bvalidation-success\b/.test(field.className)) {
-			field.className = field.className.replace(' validation-failed','') + ' validation-success';
+		if( ! /\bvalidation-success\b/.test(field.element.className)) {
+			field.element.className = field.element.className.replace(' validation-failed','') + ' validation-success';
 		}
 	},
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Add the .validation-failed class to the field and remove the .validation-success class if it exists
-	 *
-	 * @param name The name of the field
 	 */
-	_setFailClass: function(name) {
-		var self = this,
-			field = self._fields[name];
-
-		if( ! /\bvalidation-failed\b/.test(field.className)) {
-			field.className = field.className.replace(' validation-success','') + ' validation-failed';
-
-			// If the field has the enable rule set, disable the field that was passed
-			if(self._rules[name].enable) {
-				self._disableField(self._fields[self._rules[name].enable]);
-			}
+	_setFailClass: function(field) {
+		if( ! /\bvalidation-failed\b/.test(field.element.className)) {
+			field.element.className = field.element.className.replace(' validation-success','') + ' validation-failed';
 		}
 	},
 
@@ -709,41 +443,103 @@ var Validator = {
 	 * remove the corresponding error message for the field
 	 */
 	_clearField: function(field) {
-		var self = this;
-
-		field.value = '';
-		self._removeErrorMessage(field.name);
-		field.className = field.className.replace(' validation-success','');
-		field.className = field.className.replace(' validation-error','');
+		field.validated = false;
+		field.element.value = '';
+		this._removeError(field);
+		field.element.className = field.element.className.replace(' validation-success','');
+		field.element.className = field.element.className.replace(' validation-error','');
 	},
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Enable a field
 	 */
 	_enableField: function(field) {
-		field.removeAttribute('disabled');
+		field.element.removeAttribute('disabled');
 	},
 
 	/** -----------------------------------------------------------------------------------------------------
 	 * Disable a field
 	 */
 	_disableField: function(field) {
-		field.setAttribute('disabled', 'disabled');
+		console.log(field.element);
+		field.element.setAttribute('disabled', 'disabled');
 	},
 
 	/** -----------------------------------------------------------------------------------------------------
-	 * Enable the submit button if the form does not contain any errors, if it does disable the submit buton
+	 * Enable the submit button
 	 */
-	_toggleSubmit: function() {
+	_enableSubmit: function() {
+		if(this._config.disableSubmit) {
+			this._submit.removeAttribute('disabled');
+		}
+	},
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Disable the submit button
+	 */
+	_disableSubmit: function() {
+		if(this._config.disableSubmit) {
+			this._submit.setAttribute('disabled', 'disabled');
+		}
+	},
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Called when no errors exist and all the required fields are filled in
+	 *
+	 * If a success callback function is set it will be called and all the field values will be passed,
+	 * if the success callback returns true the form will be submitted
+	 *
+	 * If there is no success callback set, submit the form right away
+	 */
+	_success: function() {
 		var self = this;
 
-		if(self._isSuccessful()) {
-			if(self._submit.hasAttribute('disabled')) {
-				self._submit.removeAttribute('disabled');
+		if(typeof self._config.success == 'function') {
+			var values = {};
+			
+			// Collect the values from the form fields and pass them to the success callback
+			for(var name in self._fields) {
+				values[name] = self._fields[name].element.value;
 			}
-		} else if( ! self._submit.hasAttribute('disabled')) {
-			self._submit.setAttribute('disabled', 'disabled');
+
+			if(self._config.success(values)) {
+				self._form.submit();
+			}
+		} else {
+			self._form.submit();
 		}
+	},
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Called when the form contains errors
+	 *
+	 * If a fail callback function is set all the errors will be passed to that function
+	 */
+	_fail: function() {
+		var self = this;
+
+		if(typeof self._config.fail == 'function') {
+			var errors = {};
+			
+			// Collect the values from the form fields and pass them to the success callback
+			for(var name in self._fields) {
+				errors[name] = self._fields[name].error;
+			}
+
+			self._config.fail(errors);
+		}
+	},
+
+	/** -----------------------------------------------------------------------------------------------------
+	 * Called when an error occurs
+	 *
+	 * If an error callback function is set all the errors will be passed to that function
+	 */
+	_error: function(field) {
+		var self = this;
+
+		if(typeof self._config.error == 'function')
+			self._config.error(field);
 	},
 
 	/** -----------------------------------------------------------------------------------------------------
@@ -789,42 +585,6 @@ var Validator = {
 		return (new RegExp('(' + array.join('|').replace(/\./g, '\\.') + ')$')).test(needle);
 	},
 
-	/** -----------------------------------------------------------------------------------------------------
-	 * Called when no errors exist and all the required fields are filled in
-	 *
-	 * If a success callback function is set it will be called and all the field values will be passed,
-	 * if the success callback returns true the form will be submitted
-	 *
-	 * If there is no success callback set, submit the form right away
-	 */
-	_success: function() {
-		var self = this;
-
-		var values = {};
-		for(var name in self._fields) {
-			values[name] = self._fields[name].value;
-		}
-
-		if(typeof self._config.success == 'function') {
-			if(self._config.success(values))
-				self._form.submit();
-		} else {
-			self._form.submit();
-		}
-	},
-
-	/** -----------------------------------------------------------------------------------------------------
-	 * Called when the form contains errors
-	 *
-	 * If a fail callback function is set all the errors will be passed to that function
-	 */
-	_fail: function() {
-		var self = this;
-
-		if(typeof self._config.fail == 'function')
-			self._config.fail(self._errors);
-	},
-
 
 	/* START VALIDATIONS ---------------------------------------------------- */
 
@@ -836,7 +596,7 @@ var Validator = {
 	 *
 	 * Usage: required
 	 */
-	_required: function(field) {
+	_required: function(field, rule, parameters) {
 		var self = this;
 
 		if(field.element.type == 'checkbox') {
@@ -845,9 +605,10 @@ var Validator = {
 
 			return false;
 		} else {
-			if(field.value == null || field.value == "")
+			if(field.element.value == null || field.element.value == "")
 				return false;
-			
+
+
 			return true;
 		}
 	},
@@ -858,7 +619,7 @@ var Validator = {
 	 * Usage: int
 	 */
 	_int: function(field) {
-		return /^\d+$/.test(field.value);
+		return /^\d+$/.test(field.element.value);
 	},
 
 	/**
@@ -867,7 +628,7 @@ var Validator = {
 	 * Usage: numeric
 	 */
 	_numeric: function(field) {
-		return /^[0-9]+(\.[0-9]{1,2})?$/.test(field.value);
+		return /^[0-9]+(\.[0-9]{1,2})?$/.test(field.element.value);
 	},
 
 	/**
@@ -876,7 +637,7 @@ var Validator = {
 	 * Usage: decimal
 	 */
 	_decimal: function(field) {
-		return /^[0-9]+\.[0-9]{1,2}?$/.test(field.value);
+		return /^[0-9]+\.[0-9]{1,2}?$/.test(field.element.value);
 	},
 
 	/**
@@ -885,7 +646,7 @@ var Validator = {
 	 * Usage: alpha
 	 */
 	_alpha: function(field) {
-		return /^[a-zA-Z]*$/.test(field.value);
+		return /^[a-zA-Z]*$/.test(field.element.value);
 	},
 
 	/**
@@ -894,7 +655,7 @@ var Validator = {
 	 * Usage: alpha_nums
 	 */
 	_alpha_num: function(field) {
-		return /^[a-zA-Z0-9_]*$/.test(field.value);
+		return /^[a-zA-Z0-9_]*$/.test(field.element.value);
 	},
 
 
@@ -903,14 +664,8 @@ var Validator = {
 	 *
 	 * Usage: min:5
 	 */
-	_min: function(field) {
-		var value = parseInt(field.value),
-			min = parseInt(field.parameters);
-
-		if(value >= min)
-			return true;
-
-		return false;
+	_min: function(field, rule, parameters) {
+		return (+field.element.value >= +parameters);
 	},
 
 	/**
@@ -918,14 +673,8 @@ var Validator = {
 	 *
 	 * Usage: max:10
 	 */
-	_max: function(field) {
-		var value = parseInt(field.value),
-			max = parseInt(field.parameters);
-
-		if(value <= max)
-			return true;
-
-		return false;
+	_max: function(field, rule, parameters) {
+		return (+field.element.value <= +parameters);
 	},
 
 	/**
@@ -933,13 +682,8 @@ var Validator = {
 	 *
 	 * Usage: length:6
 	 */
-	_length: function(field) {
-		var length = field.value.split('').length;
-
-		if(length != field.parameters)
-			return false;
-
-		return true;
+	_length: function(field, rule, parameters) {
+		return (field.element.value.split('').length == parameters);
 	},
 
 	/**
@@ -947,13 +691,8 @@ var Validator = {
 	 *
 	 * Usage: minLength:4
 	 */
-	_minLength: function(field) {
-		var length = field.value.split('').length;
-
-		if(length < field.parameters)
-			return false;
-
-		return true;
+	_minLength: function(field, rule, parameters) {
+		return (field.element.value.split('').length >= parameters);
 	},
 
 	/**
@@ -961,13 +700,8 @@ var Validator = {
 	 *
 	 * Usage: maxLength:10
 	 */
-	_maxLength: function(field) {
- 		var length = field.value.split('').length;
-
-		if(length > field.parameters)
-			return false;
-
-		return true;
+	_maxLength: function(field, rule, parameters) {
+		return (field.element.value.split('').length <= parameters);
 	},
 
 	/**
@@ -976,7 +710,7 @@ var Validator = {
 	 * Usage: email
 	 */
 	_email: function(field) {
-		return /^[a-zA-Z0-9.!#$%&amp;'*+\-\/=?\^_`{|}~\-]+@[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*$/.test(field.value);
+		return /^[a-zA-Z0-9.!#$%&amp;'*+\-\/=?\^_`{|}~\-]+@[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*$/.test(field.element.value);
 	},
 
 	/**
@@ -985,18 +719,18 @@ var Validator = {
 	 * Usage: url
 	 */
 	_url: function(field) {
-		return /^((http|https):\/\/(\w+:{0,1}\w*@)?(\S+)|)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?$/.test(field.value);
+		return /^((http|https):\/\/(\w+:{0,1}\w*@)?(\S+)|)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?$/.test(field.element.value);
 	},
 
 	/**
 	 * Checks if the value for the field is in the list of passed values
 	 *
-	 * List of values can be strings, numbers of both
+	 * List of values can be strings, numbers or both
 	 *
 	 * Usage: in:1,2,3 OR in:hello,world OR in:1,2,hello
 	 */
-	_in: function(field) {
-		return (new RegExp('(' + field.parameters.join('|').replace(/\./g, '\\.') + ')$')).test(field.value.toLowerCase());
+	_in: function(field, rule, parameters) {
+		return (new RegExp('(' + parameters.join('|').replace(/\./g, '\\.') + ')$')).test(field.element.value.toLowerCase());
 	},
 
 	/**
@@ -1006,8 +740,8 @@ var Validator = {
 	 *
 	 * Usage: not_in:1,2,3 OR not_in:hello,world OR not_in:1,2,hello
 	 */
-	_not_in: function(field) {
-		return ! (new RegExp('(' + field.parameters.join('|').replace(/\./g, '\\.') + ')$')).test(field.value.toLowerCase());
+	_not_in: function(field, rule, parameters) {
+		return ! (new RegExp('(' + parameters.join('|').replace(/\./g, '\\.') + ')$')).test(field.element.value.toLowerCase());
 	},
 
 	/**
@@ -1015,10 +749,10 @@ var Validator = {
 	 *
 	 * Usage: between:1,10
 	 */
-	_between: function(field) {
-		var value = parseInt(field.value),
-			min = parseInt(field.parameters[0]),
-			max = parseInt(field.parameters[field.parameters.length-1]);
+	_between: function(field, rule, parameters) {
+		var value = +field.element.value,
+			min = +parameters[0],
+			max = +parameters[parameters.length-1];
 
 		if(value > min && value < max)
 			return true;
@@ -1031,11 +765,8 @@ var Validator = {
 	 *
 	 * Usage: equal:string
 	 */
-	_equal: function(field) {
-		if(field.value.toLowerCase() === field.parameters)
-			return true;
-
-		return false;
+	_equal: function(field, rule, parameters) {
+		return (field.element.value.toLowerCase() === parameters);
 	},
 
 	/**
@@ -1044,10 +775,44 @@ var Validator = {
 	 * Usage: not_equal:string
 	 */
 	_not_equal: function(field) {
-		if(field.value.toLowerCase() !== field.parameters)
-			return true;
+		return (field.element.value.toLowerCase() !== parameters);
+	},
 
-		return false;
+	/**
+	 * Checks if the value is a valid day number, e.g. 1-31
+	 *
+	 * Usage: day
+	 */
+	_day: function(field) {
+		return this._in(field, rule, [1, 31]);
+	},
+
+	/**
+	 * Checks if the value is a valid month number, e.g. 1-12
+	 *
+	 * Usage: month
+	 */
+	_month: function(field) {
+		return this._in(field, rule, [1, 12]);
+		// return (field.element.value >= 1 && <= 12);
+	},
+
+	/**
+	 * Checks if the value is a valid year number, e.g. four digits
+	 *
+	 * Usage: year
+	 */
+	_year: function(field, rule) {
+		return (this._length(field, rule, 4));
+	},
+
+	/**
+	 * Checks if the value is a valid date, e.g. 4-11-1989 or 04-11-89
+	 *
+	 * Usage: date
+	 */
+	_date: function(field, rule, parameters) {
+		return ( (new Date(field.element.value) !== "Invalid Date" && !isNaN(new Date(field.element.value)) ));
 	},
 
 	/**
@@ -1064,7 +829,7 @@ var Validator = {
 			var file = field.element.files[0];
 
 			if(file) {
-				if(self._has(['image/jpg', 'image/jpeg', 'image/png'], file.type))
+				if(self._has(['image/jpg', 'image/jpeg', 'image/png'], file.element.type))
 					return true;
 			}
 		}
@@ -1080,14 +845,13 @@ var Validator = {
 	 *
 	 * Usage: size:60000
 	 */
-	_size: function(field) {
-		console.log(field);
+	_size: function(field, rule, parameters) {
 		var self = this;
 
 		if(field.element.files) {
 			var file = field.element.files[0];
 
-			if(self._image(field) && file.size < field.parameters)
+			if(self._image(field) && file.size < parameters)
 				return true;
 		}
 
@@ -1102,7 +866,7 @@ var Validator = {
 	 *
 	 * Usage: mime:jpg OR mime:jpg,png
 	 */
-	_mime: function(field) {
+	_mime: function(field, rule, parameters) {
 		var self = this,
 			allowed = [];
 
@@ -1111,11 +875,11 @@ var Validator = {
 
 			if(self._image(field)) {
 				// Get the allowed types
-				if(typeof field.parameters == 'string') {
-					(self._mimeTypes[field.parameters] != undefined) && allowed.push(self._mimeTypes[field.parameters]);
-				} else if(field.parameters instanceof Array) {
+				if(typeof parameters == 'string') {
+					(self._mimeTypes[parameters] != undefined) && allowed.push(self._mimeTypes[parameters]);
+				} else if(parameters instanceof Array) {
 					for(var i=0; i<field.parameters.length; i++) {
-						(self._mimeTypes[field.parameters[i]] != undefined) && allowed.push(self._mimeTypes[field.parameters[i]]);
+						(self._mimeTypes[parameters[i]] != undefined) && allowed.push(self._mimeTypes[parameters[i]]);
 					}
 				}
 
@@ -1133,11 +897,11 @@ var Validator = {
 	 *
 	 * Usage: different:fieldname
 	 */
-	_different: function(field) {
+	_different: function(field, rule, parameters) {
 		var self = this,
-			toDiffer = self._fields[field.parameters].value;
+			toDiffer = self._fields[parameters].element.value;
 
-		if(field.value.toLowerCase() != toDiffer.toLowerCase())
+		if(field.element.value.toLowerCase() != toDiffer.toLowerCase())
 			return true;
 
 		return false;
@@ -1148,14 +912,24 @@ var Validator = {
 	 *
 	 * Usage: same:fieldname
 	 */
-	_same: function(field) {
+	_match: function(field, rule, parameters) {
 		var self = this,
-			toMatch = self._fields[field.parameters].value;
+			toMatch = self._fields[parameters].element.value;
 
-		if(field.value == toMatch)
+		if(field.element.value == toMatch)
 			return true;
 
 		return false;
+	},
+
+	_clear: function(field, rule, parameters) {
+		var toClear = this._fields[parameters];
+		if(field.element.value != toClear.element.value) {
+			this._clearField(toClear);
+			this._disableSubmit();
+		}
+
+		return true;
 	},
 
 	/**
@@ -1163,101 +937,37 @@ var Validator = {
 	 *
 	 * Usage: enable:fieldname
 	 */
-	_enable: function(field) {
+	_enable: function(field, rule, parameters) {
 		var self = this;
 
-		self._enableField(self._fields[field.parameters]);
+		self._enableField(self._fields[parameters]);
 
 		return true;
 	},
 
-
-	/**
-	 * If this rule is given to a field the value will be tested for it's strength as if it is a password.
-	 *
-	 * A strong password consists of the following:
-	 * - 2 or more uppercase
-	 * - 3 or more lowercase
-	 * - 2 or more digits
-	 * - 1 or more symbol
-	 * - 10 characters long
-	 *
-	 * A medium password consists of the following
-	 * - 1 uppercase
-	 * - 5 or more lowercase
-	 * - 1 digits
-	 * - 1 symbol
-	 * - 8 characters long
-	 *
-	 * Usage: strength
-	 */
-	_strength: function(field) {
-		var self = this,
-			strength
-			strong = new RegExp("^(?=.*[A-Z].*[A-Z])(?=.*[!@#$&*])(?=.*[0-9].*[0-9])(?=.*[a-z].*[a-z].*[a-z]).{10,}$", "g");
-			medium = new RegExp("^(?=.*[A-Z])(?=.*[!@#$&*])(?=.*[0-9])(?=.*[a-z].*[a-z].*[a-z].*[a-z].*[a-z]).{8,}$", "g");
-
-		if(field.value.length == 0) {
-			strength = 'empty';
-		} else if(strong.test(field.value)) {
-			strength = 'strong';
-		} else if(medium.test(field.value)) {
-			strength = 'medium';
-		} else {
-			strength = 'weak';
-		}
-
-		self._insertStrengthMeter(field.name, strength);
-
-		return true;
-	},
-
-	/**
-	 * Show how many characters the user can type in the field and prevent more from being typed
-	 * Called when the page loads to show the remaining characters by default and called on keydown
-	 *
-	 * @param name The name of the field
-	 * @param max The maximum characters allowed for the field
-	 * @param e The keydown event
-	 */
-	_remaining: function(name, max, e) {
-		var self = this,
-			remaining = max - self._fields[name].value.length;
-
-		if(e != undefined && e.type == 'keydown') {
-			// If the user typed an input key (alpha, num, symbol)
-			if(/^.$/.test(e.key)) {
-				if(remaining <= 0) {
-					e.preventDefault();
-				}
-			}
-		} else {
-			self._insertRemainingCharacters(name, remaining);
-		}
-	},
-
-	/**
-	 * Insert the value for the field into the HTML element with the data-preview attribute set to the name of the element
-	 *
-	 * @param name The field name
-	 */
-	_preview: function(name) {
-		var self = this;
-
-		self._insertPreview(name);
-	},
 
 
 	/* START FILTERS -------------------------------------------------------- */
 
 
 	/**
-	 * Convert the first character of the value to uppercase and the rest to lowercase, useful for names
+	 * Convert the first character of the value to uppercase, e.g. name -> Name, naMe -> NaMe
 	 *
 	 * Usage: ucfirst
 	 */
 	_ucfirst: function(field) {
-		field.element.value = field.value.charAt(0).toUpperCase() + (field.value.slice(1)).toLowerCase();
+		field.element.value = field.element.value.charAt(0).toUpperCase() + (field.element.value.slice(1));
+
+		return true;
+	},
+
+	/**
+	 * Convert the first character of the value to lowercase
+	 *
+	 * Usage: lcfirst
+	 */
+	_lcfirst: function(field) {
+		field.element.value = field.element.value.charAt(0).toLowerCase() + (field.element.value.slice(1));
 
 		return true;
 	},
@@ -1268,7 +978,7 @@ var Validator = {
 	 * Usage: uppercase
 	 */
 	_uppercase: function(field) {
-		field.element.value = field.value.toUpperCase();
+		field.element.value = field.element.value.toUpperCase();
 
 		return true;
 	},
@@ -1279,7 +989,65 @@ var Validator = {
 	 * Usage: lowercase
 	 */
 	_lowercase: function(field) {
-		field.element.value = field.value.toLowerCase();
+		field.element.value = field.element.value.toLowerCase();
+
+		return true;
+	},
+
+	/**
+	 * Converts the value to camelcase, removing the spaces, e.g. 'user name' -> 'userName'
+	 *
+	 * Usage: camelcase
+	 */
+	_camelcase: function(field) {
+		field.element.value = field.element.value.replace(/(?:^\w|[A-Z]|\b\w)/g, function(letter, index) {
+		    return index == 0 ? letter.toLowerCase() : letter.toUpperCase();
+		}).replace(/\s+/g, '');
+
+		return true;
+	},
+
+	/**
+	 * Adds a hashtag to the value
+	 *
+	 * Usage: hashtag
+	 */
+	_hashtag: function(field, rule) {
+		this._prefix(field, rule, ['#']);
+
+		return true;
+	},
+
+	/**
+	 * Remove all spaces from the input value and replaces them with hyphens
+	 *
+	 * Usage: hyphen
+	 */
+	_hyphen: function(field) {
+		field.element.value = field.element.value.replace(/\s/g, '-');
+
+		return true;
+	},
+
+	/**
+	 * Remove all spaces from the input value and replaces them with underscores
+	 *
+	 * Usage: underscore
+	 */
+	_underscore: function(field) {
+		field.element.value = field.element.value.replace(/\s/g, '_');
+
+		return true;
+	},
+
+	/**
+	 * replace a certain value with another
+	 *
+	 * Usage: replace:?,!
+	 */
+	_replace: function(field, rule, parameters) {
+		var re = new RegExp(parameters[0], 'g');
+		field.element.value = field.element.value.replace(re, parameters[1]);
 
 		return true;
 	},
@@ -1289,8 +1057,8 @@ var Validator = {
 	 *
 	 * Usage: prefix:string
 	 */
-	_prefix: function(field) {
-		field.element.value = field.parameters + field.value;
+	_prefix: function(field, rule, parameters) {
+		field.element.value = parameters + field.element.value;
 	
 		return true;
 	},
@@ -1300,8 +1068,8 @@ var Validator = {
 	 *
 	 * Usage: suffix:string
 	 */
-	_suffix: function(field) {
-		field.element.value = field.value + field.parameters;
+	_suffix: function(field, rule, parameters) {
+		field.element.value = field.element.value + parameters;
 	
 		return true;
 	},
@@ -1318,7 +1086,7 @@ var Validator = {
 	 */	
 	_money: function(field) {
 		// First clear all the comma's from the number, next set the decimal value
-		field.element.value = parseFloat(field.value.replace(/\,/g, '')).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+		field.element.value = parseFloat(field.element.value.replace(/\,/g, '')).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
 	
 		return true;
 	},
@@ -1329,7 +1097,7 @@ var Validator = {
 	 * Usage: trim
 	 */
 	_trim: function(field) {
-		field.element.value = field.value.trim();
+		field.element.value = field.element.value.trim();
 	
 		return true;
 	},
@@ -1340,7 +1108,7 @@ var Validator = {
 	 * Usage: no_spaces
 	 */
 	_no_spaces: function(field) {
-		field.element.value = field.value.replace(/\s/g, '');
+		field.element.value = field.element.value.replace(/\s/g, '');
 
 		return true;
 	},
@@ -1352,7 +1120,7 @@ var Validator = {
 	 * Will crop all the characters after the fourth character
 	 */
 	_crop: function(field) {
-		field.element.value = field.value.substring(0, field.parameters);
+		field.element.value = field.element.value.substring(0, field.parameters);
 	
 		return true;
 	},
@@ -1363,11 +1131,11 @@ var Validator = {
 	 *
 	 * Usage: htmlentities
 	 */
-	_html: function(field) {
-		if(field.parameters === true) {
-			field.element.value = field.value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+	_html: function(field, rule, parameters) {
+		if(parameters === true) {
+			field.element.value = field.element.value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
 		} else {
-			field.element.value = field.value.replace(/&$/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+			field.element.value = field.element.value.replace(/&$/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 		}
 
 		return true;
@@ -1382,16 +1150,16 @@ var Validator = {
 	 *
 	 * Usage: round:up, round:down
 	 */
-	_round: function(field) {
+	_round: function(field, rule, parameters) {
 		var self = this;
 
 		if(self._numeric(field)) {
-			if(field.parameters == 'up') {
-				field.element.value = Math.ceil(field.value);
-			} else if(field.parameters == 'down') {
-				field.element.value = Math.floor(field.value);
+			if(parameters == 'up') {
+				field.element.value = Math.ceil(field.element.value);
+			} else if(parameters == 'down') {
+				field.element.value = Math.floor(field.element.value);
 			} else {
-				field.element.value = Math.round(field.value);
+				field.element.value = Math.round(field.element.value);
 			}
 
 			return true;
