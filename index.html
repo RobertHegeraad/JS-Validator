@@ -2,29 +2,45 @@
 <html>
 <head>
 	<title>JavaScript Validation</title>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
 	<link rel="stylesheet" href="css/style.css"/>
+
 </head>
 <body>
 
 <form id="my-form" action="upload.php" method="post" enctype="multipart/form-data">
 
 	<label>First Name</label>
-	<input type="text" name="firstName" data-display="First name"/>
+	<input class="field" type="text" name="firstName" data-display="First name"/>
 	<span data-error="firstName"></span>
 
+	<label>Last Name</label>
+	<input class="field" type="text" name="lastName" data-display="Last name"/>
+	<span data-error="lastName"></span>
+
+	<label>Email</label>
+	<input class="field" type="text" name="email" data-display="Email"/>
+	<span data-error="email"></span>
+
 	<label>Password</label>
-	<input type="text" name="password" data-display="Password"/>
+	<input class="field" type="text" name="password" data-display="Password"/>
 	<span data-error="password"></span>
 
 	<label>Password confirm</label>
-	<input type="text" name="password_confirm" data-display="Password confirm" disabled/>
+	<input class="field" type="text" name="password_confirm" data-display="Password confirm" disabled/>
 	<span data-error="password_confirm"></span>
-	
-	<label>I Agree</label>
-	<input type="checkbox" name="agree" data-display="agree"/>
+<!-- 	
+	<label></label>
+	<input type="checkbox" name="agree" data-display="agree"/> -->
+
+	<label class="checkbox-label">
+		<input name="agree" type="checkbox" data-display="Agree"/>
+		<span class="checkbox"></span>
+		I Agree to the terms and conditions
+	</label>
 	<span data-error="agree"></span>
 
-	<input type="submit" value="Send"/>
+	<input class="btn btn-primary" type="submit" value="Register"/>
 
 </form>
 
@@ -32,14 +48,12 @@
 <script>
 
 Validator.set('my-form', {
-	'firstName': 'myRule|required',
-	'password': 'required|clear:password_confirm|enable:password_confirm',
+	'firstName': 'required|alpha',
+	'lastName': 'required|alpha',
+	'email': 'required|email',
+	'password': 'required|clear:password_confirm|enable:password_confirm|contain:alpha',
 	'password_confirm': 'required|match:password',
 	'agree': 'required'
-	// 'password': 'required|enable:confirm_password|strength',
-	// 'confirm_password': 'required|same:password',
-	// 'message': 'required|remaining:100|crop:100|preview',
-	// 'profile_image': 'image|size:200000|mime:jpg,png'
 }, {
 	keyup: true,
 	disableSubmit: false,
@@ -49,7 +63,7 @@ Validator.set('my-form', {
 		}
 	},
 	customRules: {
-		myRule: function(field) {
+		myRule: function(field, rule, parameters) {
 			field.error = 'MyRule has failed';
 
 			if(field.element.value == 'Robert')
