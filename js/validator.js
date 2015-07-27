@@ -922,6 +922,11 @@ var Validator = {
 		return false;
 	},
 
+	/**
+	 * Clears another field if the value for the current field is being changed
+	 *
+	 * Usage: clear:password_confirm
+	 */
 	_clear: function(field, rule, parameters) {
 		var toClear = this._fields[parameters];
 		if(field.element.value != toClear.element.value) {
@@ -943,6 +948,19 @@ var Validator = {
 		self._enableField(self._fields[parameters]);
 
 		return true;
+	},
+
+	/**
+	 * Checks if the value contains an integer or an alpha string
+	 *
+	 * Usage: contain:int or contain:alpha
+	 */
+	_contain: function(field, rule, parameters) {
+		if(parameters == 'int') {
+			return !isNaN(parseFloat(field.element.value));
+		}
+
+		return isNaN(parseFloat(field.element.value));
 	},
 
 
