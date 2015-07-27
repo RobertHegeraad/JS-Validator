@@ -1,4 +1,4 @@
-HTML5 Multiple File Drag and Drop Upload
+JavaScript Validator
 =====
 
 #### Demo
