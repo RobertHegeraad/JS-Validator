@@ -153,19 +153,15 @@ customMessages: {
 Setting up custom rules is also very easy to do, in the example below we set up a rule called 'myRule'. This rule receives an object called field that contains the following information:
 
 ```js
-field.element - The HTML input field
-field.rule - The current rule that is being validated, this will be the same as the custom rule name, in this case 'myRule'
-field.parameters - The parameters passed to the rule, if a single parameter was passed it will be a string, else an array
-field.value - The value of the field
-field.message - With the message property you can set a custom message directly in the rule function, this will overwrite custom messages
+field.element - The HTML input field, can be used to get the value for the field like so: field.element.value
+rule - The current rule that is being validated, this will be the same as the custom rule name, in this case 'myRule'
+parameters - The parameter(s) passed to the rule, if a single parameter was passed it will be a string, else an array
 ```
 
 ```js
 customRules: {
-	myRule: function(field) {
-		field.message = 'MyRule has failed';
-
-		if(field.value == 'HelloWorld')
+	myRule: function(field, rule, parameters) {
+		if(field.element.value == 'HelloWorld')
 			return true;
 
 		return false;
