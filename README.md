@@ -54,12 +54,17 @@ Validator.set('my-form-id', {
 | between:1,10 		  |	Checks if the value is between the two passed in numbers not including both 													|
 | equal:string 		  |	Checks if the value is equal to the value that is passed in 																 	|
 | not_equal:string	  | Checks if the value is not equal to the value that is passed in 															 	|
+| day				| Checks if the value is a valid day number, e.g. 1-31
+| month				| Checks if the value is a valid month number, e.g. 1-12
+| year				| Checks if the value is a valid year number, e.g. four digits
+| date				| Checks if the value is a valid date, e.g. 4-11-1989 or 04-11-89
 | image 			  |	Checks if the file that should be uploaded is an image by checking the MIME type of the file 									|
 | size:60000 		  |	Checks the filesize does not exceed the value that was passed 																	|
 | mime:jpg,png 		  |	Checks if the MIME type is allowed, all allowed MIME types are in the mimeTypes object 											|
 | different:fieldname | Checks if the value is different than the value of another field 																|
 | same:fieldname 	  |	Checks if the value is the same as the value of another field 																	|
 | enable:fieldname 	  |	Enables another field if the given field has passed all other validation rules, if it fails the field will be disabled again	|
+| contain:int 	  |	Checks if the value contains an integer value or an alpha value		|
 
 #### Filter
 
@@ -70,8 +75,14 @@ Here are all the filters
 | Rule        		  			| Description																														
 | ------------------------------|-----------------------------------------------------------------------------------------------------
 | ucfirst						| Convert the first character of the value to uppercase and the rest to lowercase
+| lcfirst						| Convert the first character of the value to lowercase and the rest to uppercase
 | uppercase 					| Converts the value to uppercase
 | lowercase 					| Converts the value to lowercase
+| camelcase					| Converts the value to camelcase, removing the spaces, e.g. 'user name' -> 'userName'
+| hashtag					| Adds a hashtag to the value
+| hyphen					| Remove all spaces from the input value and replaces them with hyphens
+| underscore					| Remove all spaces from the input value and replaces them with underscores
+| replace:?,!					| replace a certain value with another
 | prefix:string 				| Puts a prefix before the value
 | suffix:string 				| Puts a suffix after the value
 | money 						| Converts a number into a money figure, 100 will become 100.00, 2.5 will become 2.50
@@ -80,7 +91,7 @@ Here are all the filters
 | no_spaces 					| Remove all spaces from the input value
 | html:boolean 					| If set to true it converts from HTML enitities in the value, if false it converts to HTML entities
 | round, round:up, round:down 	| Round the given value either up, down or to the nearest integer if no parameter was passed
-| allow:alpha, allow:int 		| With the allow rule you can allow only either letters or numbers to be typed in the field
+
 
 
 ## Config
