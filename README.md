@@ -1,4 +1,4 @@
-HTML5 Multiple File Drag and Drop Upload
+JavaScript Validator
 =====
 
 #### Demo
@@ -10,20 +10,22 @@ http://jsfiddle.net/RobertHegeraad/geu4j2bh/
 To set up validation call the Validator.set() function and pass the ID of the form in the first parameter, the second parameter should contain all the validation rules for each field. The third parameter is the configuration, more on that in the Config section
 
 ```js
-Validator.set('my-form', {
-	'firstName': 'required|allow:alpha',
-	'lastName': 'required|allow:alpha',
-	'password': 'required|enable:confirm_password|strength',
+Validator.set('my-form-id', {
+	'firstName': 'required|alpha',
+	'lastName': 'required|alpha',
+	'password': 'required|enable:confirm_password|maxLength:20',
 	'confirm_password': 'required|same:password',
-	'message': 'required|remaining:100|crop:100|preview',
+	'message': 'required|crop:100',
 	'profile_image': 'image|size:200000|mime:jpg,png'
 }, {
-	validateOn: 'keyup',
 	disableSubmit: false,
 	success: function(data) {
-		return true;
+		// Validation passed
+		// data variable contains all field and values
 	},
 	fail: function(errors) {
+		// Validation failed
+		// errors variable contains all fields and error messages
 	}
 });
 ```
@@ -52,12 +54,17 @@ Validator.set('my-form', {
 | between:1,10 		  |	Checks if the value is between the two passed in numbers not including both 													|
 | equal:string 		  |	Checks if the value is equal to the value that is passed in 																 	|
 | not_equal:string	  | Checks if the value is not equal to the value that is passed in 															 	|
+| day				| Checks if the value is a valid day number, e.g. 1-31
+| month				| Checks if the value is a valid month number, e.g. 1-12
+| year				| Checks if the value is a valid year number, e.g. four digits
+| date				| Checks if the value is a valid date, e.g. 4-11-1989 or 04-11-89
 | image 			  |	Checks if the file that should be uploaded is an image by checking the MIME type of the file 									|
 | size:60000 		  |	Checks the filesize does not exceed the value that was passed 																	|
 | mime:jpg,png 		  |	Checks if the MIME type is allowed, all allowed MIME types are in the mimeTypes object 											|
 | different:fieldname | Checks if the value is different than the value of another field 																|
 | same:fieldname 	  |	Checks if the value is the same as the value of another field 																	|
 | enable:fieldname 	  |	Enables another field if the given field has passed all other validation rules, if it fails the field will be disabled again	|
+| contain:int 	  |	Checks if the value contains an integer value or an alpha value		|
 
 #### Filter
 
@@ -68,8 +75,14 @@ Here are all the filters
 | Rule        		  			| Description																														
 | ------------------------------|-----------------------------------------------------------------------------------------------------
 | ucfirst						| Convert the first character of the value to uppercase and the rest to lowercase
+| lcfirst						| Convert the first character of the value to lowercase and the rest to uppercase
 | uppercase 					| Converts the value to uppercase
 | lowercase 					| Converts the value to lowercase
+| camelcase					| Converts the value to camelcase, removing the spaces, e.g. 'user name' -> 'userName'
+| hashtag					| Adds a hashtag to the value
+| hyphen					| Remove all spaces from the input value and replaces them with hyphens
+| underscore					| Remove all spaces from the input value and replaces them with underscores
+| replace:?,!					| replace a certain value with another
 | prefix:string 				| Puts a prefix before the value
 | suffix:string 				| Puts a suffix after the value
 | money 						| Converts a number into a money figure, 100 will become 100.00, 2.5 will become 2.50
@@ -78,28 +91,10 @@ Here are all the filters
 | no_spaces 					| Remove all spaces from the input value
 | html:boolean 					| If set to true it converts from HTML enitities in the value, if false it converts to HTML entities
 | round, round:up, round:down 	| Round the given value either up, down or to the nearest integer if no parameter was passed
-| allow:alpha, allow:int 		| With the allow rule you can allow only either letters or numbers to be typed in the field
 
-#### HTML rules
-
-The following rules work together with HTML elements on the page, more information on these can be read at the bottom of the page.
-
-| Rules 		| Description																														
-| --------------|----------------------------------------------------------------------------------------------------------------
-| strength 		| Shows a strength meter for the value in an HTML element, useful for passwords
-| remaining:100	| Shows how many characters are still remaining for the user to be typed, blocks characters that exceed the limit
-| preview 		| Shows a preview of the field value in an HTML element, useful for comments
 
 
 ## Config
-
-#### Validate on
-
-This options allows you to validate the field(s) on either 'submit', 'keyup' or 'blur'. Defaults to 'submit'
-
-```js
-validateOn: 'keyup'
-```
 
 #### Disable submit
 
@@ -109,7 +104,7 @@ If set to true, the submit button will be disabled and only enabled when all the
 disableSubmit: false
 ```
 
-You can also just disable the submit button in the form directly.
+You can also just disable the submit button in the form directly. It will be enabled and disabled again depending on the current status of the form.
 
 ```html
 <input type="submit" value="Send" disabled/>
@@ -158,19 +153,15 @@ customMessages: {
 Setting up custom rules is also very easy to do, in the example below we set up a rule called 'myRule'. This rule receives an object called field that contains the following information:
 
 ```js
-field.element - The HTML input field
-field.rule - The current rule that is being validated, this will be the same as the custom rule name, in this case 'myRule'
-field.parameters - The parameters passed to the rule, if a single parameter was passed it will be a string, else an array
-field.value - The value of the field
-field.message - With the message property you can set a custom message directly in the rule function, this will overwrite custom messages
+field.element - The HTML input field, can be used to get the value for the field like so: field.element.value
+rule - The current rule that is being validated, this will be the same as the custom rule name, in this case 'myRule'
+parameters - The parameter(s) passed to the rule, if a single parameter was passed it will be a string, else an array
 ```
 
 ```js
 customRules: {
-	myRule: function(field) {
-		field.message = 'MyRule has failed';
-
-		if(field.value == 'HelloWorld')
+	myRule: function(field, rule, parameters) {
+		if(field.element.value == 'HelloWorld')
 			return true;
 
 		return false;
@@ -209,58 +200,4 @@ You can set a display for the field with the data-display attribute for the fiel
 
 ```html
 <input type="text" name="firstName" data-display="First name"/>
-```
-
-#### Characters remaining
-
-Sometimes you want to show the user how many characters a field can have while the user is typing. You can do this by creating an element with the data-remaining attribute set to the name of the corresponding field and setting the remaining rule. In the example below we allow the user to type 100 characters in the comment textarea.
-
-The element will also receive a class .validation-remaining so you can apply additonal styling.
-
-```html
-<label>Comment</label>
-<span data-remaining="comment"></span>
-<textarea name="comment" data-validation="required|remaining:100"></textarea>
-<span data-error="comment"></span>
-```
-
-#### Preview
-
-For some fields, like the comment textarea above, it is common to show a preview for the user. You can do this by creating an element with the data-preview attribute set to the name of the field and setting the preview rule. This will put the value in the HTML element when the user is typing.
-
-The element will also receive a class .validation-preview so you can apply additonal styling.
-
-```html
-<label>Comment</label>
-<span data-remaining="comment"></span>
-<textarea name="comment" data-display="Comment" data-validation="required|remaining:100|preview"></textarea>
-<span data-error="comment"></span>
-<div data-preview="comment"></div>
-```
-
-#### Password Strength
-
-For password fields you can show a strength meter to the user. To do this create an element with the data-strength attribute set to the name of the field and set the strength rule.
-
-The element will receive a class .validation-strength and either .validation-strength-empty/weak/medium/strong so you can apply additonal styling.
-
-A strong password consists of the following:
-- 2 or more uppercase
-- 3 or more lowercase
-- 2 or more digits
-- 1 or more symbol
-- 10 characters long
-
-A medium password consists of the following
-- 1 uppercase
-- 5 or more lowercase
-- 1 digits
-- 1 symbol
-- 8 characters long
-
-```html
-<label>Password</label>
-<input type="password" name="password" data-validation="required|strength"/>
-<span data-strength="password"></span>
-<span data-error="password"></span>
 ```
