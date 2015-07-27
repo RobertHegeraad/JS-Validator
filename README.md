@@ -10,20 +10,22 @@ http://jsfiddle.net/RobertHegeraad/geu4j2bh/
 To set up validation call the Validator.set() function and pass the ID of the form in the first parameter, the second parameter should contain all the validation rules for each field. The third parameter is the configuration, more on that in the Config section
 
 ```js
-Validator.set('my-form', {
-	'firstName': 'required|allow:alpha',
-	'lastName': 'required|allow:alpha',
-	'password': 'required|enable:confirm_password|strength',
+Validator.set('my-form-id', {
+	'firstName': 'required|alpha',
+	'lastName': 'required|alpha',
+	'password': 'required|enable:confirm_password|maxLength:20',
 	'confirm_password': 'required|same:password',
-	'message': 'required|remaining:100|crop:100|preview',
+	'message': 'required|crop:100',
 	'profile_image': 'image|size:200000|mime:jpg,png'
 }, {
-	validateOn: 'keyup',
 	disableSubmit: false,
 	success: function(data) {
-		return true;
+		// Validation passed
+		// data variable contains all field and values
 	},
 	fail: function(errors) {
+		// Validation failed
+		// errors variable contains all fields and error messages
 	}
 });
 ```
@@ -80,26 +82,8 @@ Here are all the filters
 | round, round:up, round:down 	| Round the given value either up, down or to the nearest integer if no parameter was passed
 | allow:alpha, allow:int 		| With the allow rule you can allow only either letters or numbers to be typed in the field
 
-#### HTML rules
-
-The following rules work together with HTML elements on the page, more information on these can be read at the bottom of the page.
-
-| Rules 		| Description																														
-| --------------|----------------------------------------------------------------------------------------------------------------
-| strength 		| Shows a strength meter for the value in an HTML element, useful for passwords
-| remaining:100	| Shows how many characters are still remaining for the user to be typed, blocks characters that exceed the limit
-| preview 		| Shows a preview of the field value in an HTML element, useful for comments
-
 
 ## Config
-
-#### Validate on
-
-This options allows you to validate the field(s) on either 'submit', 'keyup' or 'blur'. Defaults to 'submit'
-
-```js
-validateOn: 'keyup'
-```
 
 #### Disable submit
 
@@ -109,7 +93,7 @@ If set to true, the submit button will be disabled and only enabled when all the
 disableSubmit: false
 ```
 
-You can also just disable the submit button in the form directly.
+You can also just disable the submit button in the form directly. It will be enabled and disabled again depending on the current status of the form.
 
 ```html
 <input type="submit" value="Send" disabled/>
@@ -209,58 +193,4 @@ You can set a display for the field with the data-display attribute for the fiel
 
 ```html
 <input type="text" name="firstName" data-display="First name"/>
-```
-
-#### Characters remaining
-
-Sometimes you want to show the user how many characters a field can have while the user is typing. You can do this by creating an element with the data-remaining attribute set to the name of the corresponding field and setting the remaining rule. In the example below we allow the user to type 100 characters in the comment textarea.
-
-The element will also receive a class .validation-remaining so you can apply additonal styling.
-
-```html
-<label>Comment</label>
-<span data-remaining="comment"></span>
-<textarea name="comment" data-validation="required|remaining:100"></textarea>
-<span data-error="comment"></span>
-```
-
-#### Preview
-
-For some fields, like the comment textarea above, it is common to show a preview for the user. You can do this by creating an element with the data-preview attribute set to the name of the field and setting the preview rule. This will put the value in the HTML element when the user is typing.
-
-The element will also receive a class .validation-preview so you can apply additonal styling.
-
-```html
-<label>Comment</label>
-<span data-remaining="comment"></span>
-<textarea name="comment" data-display="Comment" data-validation="required|remaining:100|preview"></textarea>
-<span data-error="comment"></span>
-<div data-preview="comment"></div>
-```
-
-#### Password Strength
-
-For password fields you can show a strength meter to the user. To do this create an element with the data-strength attribute set to the name of the field and set the strength rule.
-
-The element will receive a class .validation-strength and either .validation-strength-empty/weak/medium/strong so you can apply additonal styling.
-
-A strong password consists of the following:
-- 2 or more uppercase
-- 3 or more lowercase
-- 2 or more digits
-- 1 or more symbol
-- 10 characters long
-
-A medium password consists of the following
-- 1 uppercase
-- 5 or more lowercase
-- 1 digits
-- 1 symbol
-- 8 characters long
-
-```html
-<label>Password</label>
-<input type="password" name="password" data-validation="required|strength"/>
-<span data-strength="password"></span>
-<span data-error="password"></span>
 ```
