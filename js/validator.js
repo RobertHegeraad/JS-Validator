@@ -1,11 +1,5 @@
 var Validator = {
 
-	// demo page met elke filter en validation
-	// checkboxes
-	// radio buttons
-	// events anders
-
-
 	_config: {
 		validateOn: 'submit',	// Validate the form on either 'submit', 'keyup' or 'blur'
 		disableSubmit: false,	// If set to true, the submit button will be disabled and only enabled when all the required fields are succesful
